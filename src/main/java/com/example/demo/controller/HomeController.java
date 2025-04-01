@@ -6,6 +6,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 @Controller
 public class HomeController {
+	
+	// For a simple health check endpoint
+    @GetMapping("/health")
+    public ResponseEntity<String> healthCheck() {
+        return ResponseEntity.ok("Service is up and running!");
+    }
   
     @GetMapping({"/", "/home"})
     public String home(Model model) {
