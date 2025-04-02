@@ -1,0 +1,67 @@
+pipeline {
+   agent any
+    
+   tools {
+        // Install the Maven version configured as "M3" and add it to the path.
+        jdk "JAVA"
+        maven "MAVEN"
+        
+    }
+	
+	environment {
+        AWS_REGION = "us-east-1"
+        ECR_REPO = "715841367723.dkr.ecr.us-east-1.amazonaws.com/ncpl_spring"
+        IMAGE_TAG = "latest"
+    }
+
+    stages {
+        stage('git check out') {
+            steps {
+               checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/jathu1994/NCPL_Jenkins_Spring_app_sample']])
+            }
+        }
+        stage('maven build') {
+            steps {
+               sh 'mvn clean package'
+            }
+        }
+		
+		stage('Build Docker Image') {
+            steps {
+                sh '''
+                docker build -t $ECR_REPO:$IMAGE_TAG .
+                '''
+            }
+        }
+		
+		stage('Authenticate with ECR') {
+            steps {
+                sh '''
+                aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO
+                '''
+            }
+        }
+		
+		stage('Push to ECR') {
+            steps {
+                sh '''
+                docker push $ECR_REPO:$IMAGE_TAG
+                '''
+            }
+        }
+        
+        stage('Trigger CD Pipeline') {
+            steps {
+                script {
+                    // Wait for 1 minute before triggering CD
+                    sleep(time: 1, unit: 'MINUTES')
+            
+                    // Trigger the CD pipeline (non-blocking)
+                    build job: 'ncplspringapp_cd', wait: false
+                }
+            }
+        }
+		
+		
+    }
+}
